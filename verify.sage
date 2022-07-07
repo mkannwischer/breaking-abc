@@ -12,25 +12,28 @@ addr = "84cJso7keg6SHW4vbNVbXccimCZrz7WoESXTtw12b5UsWqmm5"
 msg = "There is no pot of gold at the end of the Rainbow."
 sig = "TqERiKoFpkDEOEUGrq2WfH/XvTxP8dzbUxUpD1UyTUyLnVUaZcqW9IV+bTLIuamWS+XVKFcslYHLnxNcjcjnCA=="
 
-print("msg=", msg)
-print("signature=", sig)
-print("h(pk)=", addr)
+print(f"msg:   {msg}")
+print(f"sig:   {sig}")
+print(f"h(pk): {addr}")
+
+################################################################
 
 # convert from Rainbow tower field to F_2[x]/(x^4 + x + 1)
-assert list(GF(16).modulus()) == [1,1,0,0,1]    # encoding
-F16,y = GF(16).objgen()
+F16.<y> = GF(16)
+assert y^4+y+1 == 0
 x = y^2+y
-assert list(x.minpoly()) == [1,1,1]
+assert x^2+x+1 == 0
+
 def nib2el(nib):
     assert 0 <= nib < 16
     a,b,c,d = ((nib>>i)&1 for i in range(4))
     return (a+b*x) + (c+d*x)*y
 
-def bytesToGF16(t):
+def bytesToGF16vec(t):
     t = [(t[i//2]>>i%2*4)&0xf for i in range(2*len(t))]
-    return list(map(nib2el, t))
+    return vector(map(nib2el, t))
 
-
+################################################################
 
 n = 96
 m = 64
@@ -45,15 +48,12 @@ def hashPk(pk):
     h = hashlib.sha256(pk).digest()
     h = hashlib.sha256(h).digest()
     h = b'\x00' + h
-    return base58.b58encode_check(h)
+    return base58.b58encode_check(h).decode()
 
-assert hashPk(pk) == bytes(addr, "ascii")
+assert hashPk(pk) == addr
 
-pk = pk[:-1]
 # convert to GF(16) elements
-pk = bytesToGF16(pk)
-
-
+pk = list(bytesToGF16vec(pk[:-1]))
 
 def consume(count):
     global pk
@@ -71,14 +71,13 @@ assert not pk
 b = matrix(F16, n, m, linear)
 c = vector(constant)
 
-Acoeffs = copy(quadratic)
+Acoeffs = quadratic[::-1]
 As = [matrix(F16, n, n) for _ in range(m)]
 for i in range(n):
-    print(f'{float(100*i*(i+1)/n/(n+1)):3.0f}%', end='\r', file=sys.stderr)
     for j in range(i+1):
         for k in range(m):
-            As[k][i,j] = Acoeffs.pop(0)
-assert not Acoeffs
+            As[k][i,j] = Acoeffs.pop()
+assert not Acoeffs; del Acoeffs
 
 # Rainbow public map
 def pubmap(x):
@@ -89,6 +88,7 @@ def pubmap(x):
     assert y in F16^m
     return y
 
+################################################################
 
 # decode signature
 sig = base64.b64decode(sig)
@@ -97,7 +97,7 @@ salt = sig[48:]
 sig = sig[:48]
 
 # convert signature to GF(16)
-sig = vector(bytesToGF16(sig))
+sig = bytesToGF16vec(sig)
 
 # apply public map to signature to obtain hash of message
 h1 = pubmap(sig)
@@ -122,7 +122,6 @@ def encode_varint(value):
 
     return varint
 
-
 # compute hash of the message and convert to GF(16)
 def abchash(msg, salt):
     strMessageMagic = "Abcmint Signed Message:\n"
@@ -136,9 +135,10 @@ def abchash(msg, salt):
     return hashlib.sha256(buf).digest()
 
 h0 = abchash(msg, salt)
-h0 = vector(bytesToGF16(h0))
+h0 = bytesToGF16vec(h0)
 
 if h0 == h1:
     print("Signature is valid")
 else:
     print("Signature is invalid")
+
