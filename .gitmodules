@@ -1,0 +1,3 @@
+[submodule "abcmint"]
+	path = abcmint
+	url = https://github.com/abcmint/abcmint
