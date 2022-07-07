@@ -15,7 +15,7 @@ int main(void){
     char msg[] = "There is no pot of gold at the end of the Rainbow.";
 
     printf("addr=%s\n", addr);
-    printf("sig=%s\n", sig);
+    printf("sig=%s\n", sigb64);
     printf("msg=%s\n", msg);
 
     // read pk from file
