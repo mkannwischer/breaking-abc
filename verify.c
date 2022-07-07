@@ -24,7 +24,11 @@ int main(void){
     fclose(f);
 
     char strMessageMagic[] = "Abcmint Signed Message:\n";
-    unsigned char buf[150];
+    if(strlen(msg) >= 253) {
+        printf("msglen >= 253 bytes needs varint encoding; not implementend\n");
+        return -1;
+    }
+    unsigned char buf[300];
     unsigned char h[32];
     unsigned char *ptr = buf;
 
